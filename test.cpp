@@ -87,8 +87,3 @@ Base baseTest(void) {
 	return b;
 }
 
-int main(void) {
-	Base base = baseTest();
-
-	return 0;
-}
