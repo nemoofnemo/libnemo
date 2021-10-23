@@ -3,6 +3,7 @@
 using namespace std;
 using namespace nemo;
 
+std::shared_ptr<ThreadPool> nemo::ThreadPool::instance = nullptr;
 
 nemo::ThreadPool::ThreadPool() {
 
@@ -24,12 +25,7 @@ void nemo::ThreadPool::workerThread(void)
 				if (ptr->taskList.size()) {
 					task = *(ptr->taskList.begin());
 					ptr->lock.unlock();
-					if (task != nullptr) {
-						task->run();
-					}
-					else {
-						break;
-					}
+					
 				}
 				else
 					ptr->lock.unlock();
@@ -63,10 +59,6 @@ std::shared_ptr<ThreadPool>& nemo::ThreadPool::get(void)
 	return ThreadPool::instance;
 }
 
-void nemo::ThreadPool::resume(void)
-{
-}
-
 void nemo::ThreadPool::startNewThread(std::shared_ptr<IThreadPoolTask> task)
 {
 	thread t([task]() {
@@ -79,17 +71,13 @@ void nemo::ThreadPool::addTask(std::shared_ptr<IThreadPoolTask> task)
 {
 }
 
-void nemo::ThreadPool::exec(void)
-{
-}
-
 void nemo::ThreadPool::halt(void)
 {
 	auto& ptr = ThreadPool::instance;
 	
 	for (size_t i = 0; i < ptr->threadCount; ++i) {
 		ptr->lock.lock();
-		ptr->taskList.push_back(nullptr);
+
 		ptr->lock.unlock();
 	}
 	
@@ -101,3 +89,6 @@ void nemo::ThreadPool::pause(void)
 {
 }
 
+void nemo::ThreadPool::resume(void)
+{
+}

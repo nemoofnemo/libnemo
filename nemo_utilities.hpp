@@ -32,15 +32,15 @@ namespace nemo {
 		std::mutex lock;
 		std::list<std::shared_ptr<IThreadPoolTask>> taskList;
 
-		ThreadPool();
 		ThreadPool(const ThreadPool&) = delete;
 		ThreadPool(ThreadPool&&) = delete;
 		void operator=(const ThreadPool&) = delete;
-		~ThreadPool();
 
 		static void workerThread(void);
 
 	public:
+		ThreadPool();
+		~ThreadPool();
 		//init() must called before get instance
 		static std::shared_ptr<ThreadPool>& init(size_t count = 2, unsigned long time = 10);
 		//init() must called before get instance
