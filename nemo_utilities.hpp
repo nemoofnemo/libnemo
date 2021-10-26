@@ -28,24 +28,27 @@ namespace nemo {
 		size_t threadCount = 0;
 		//time in ms
 		unsigned int interval = 0;
+		//ThreadPool status
+		enum ThreadPoolTaskType status = TASK_TYPE_NONE;
 		//mutex for task list
 		std::mutex lock;
 		std::list<std::shared_ptr<IThreadPoolTask>> taskList;
 
+		ThreadPool();
 		ThreadPool(const ThreadPool&) = delete;
 		ThreadPool(ThreadPool&&) = delete;
 		void operator=(const ThreadPool&) = delete;
-
+		
 		static void workerThread(void);
 
 	public:
-		ThreadPool();
+		
 		~ThreadPool();
 		//init() must called before get instance
 		static std::shared_ptr<ThreadPool>& init(size_t count = 2, unsigned long time = 10);
 		//init() must called before get instance
 		static std::shared_ptr<ThreadPool>& get(void);
-		//discard all tasks
+		//discard all tasks, terminate all threads.after halt(), addTask() will not add new task to thread pool
 		void halt(void);
 		//pause all worker thread
 		void pause(void);

@@ -3,23 +3,26 @@
 
 using namespace std;
 
-void func(void) {
-	cout << "thread: " << this_thread::get_id() << " start" << endl;
-	for (int i = 0; i < 10; i++) {
-		cout << "thread: " << this_thread::get_id() << " count: " << i << endl;
-		this_thread::sleep_for(chrono::milliseconds(500));
+struct ab {
+	int a = 10;
+	~ab() {
+		cout << "~ab" << endl;
 	}
+};
+
+struct cd {
+	ab a;
+	~cd() {
+		cout << "~cd" << endl;
+ 	}
+};
+
+void func(void) {
+	
 }
 
 int main(void) {
-	cout << "main start" << endl;
-	thread t1(func);
-	thread t2(func);
-	cout << "kkkk" << endl;
-	t1.detach();
-	cout << "ssss" << endl;
-	t2.detach();
-	cout << "end";
-	this_thread::sleep_for(chrono::seconds(2));
+	auto ptr1 = make_shared<cd>();
+	shared_ptr<ab> ptr2(ptr1, &ptr1->a);
 	return 0;
 }

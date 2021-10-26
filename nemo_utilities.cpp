@@ -5,8 +5,9 @@ using namespace nemo;
 
 std::shared_ptr<ThreadPool> nemo::ThreadPool::instance = nullptr;
 
-nemo::ThreadPool::ThreadPool() {
-
+nemo::ThreadPool::ThreadPool()
+{
+	
 }
 
 nemo::ThreadPool::~ThreadPool()
@@ -37,8 +38,8 @@ void nemo::ThreadPool::workerThread(void)
 
 std::shared_ptr<ThreadPool>& nemo::ThreadPool::init(size_t count, unsigned long time)
 {
-	if (ThreadPool::instance == nullptr) {
-		ThreadPool::instance = make_shared<ThreadPool>();
+	if (!ThreadPool::instance) {
+		ThreadPool::instance.reset(new ThreadPool());
 		
 		allocator<thread> alloc;
 		thread* threads = alloc.allocate(count);
@@ -69,26 +70,40 @@ void nemo::ThreadPool::startNewThread(std::shared_ptr<IThreadPoolTask> task)
 
 void nemo::ThreadPool::addTask(std::shared_ptr<IThreadPoolTask> task)
 {
+	auto& ptr = ThreadPool::instance;
+	ptr->lock.lock();
+	if (ptr->status != ThreadPoolTaskType::TASK_TYPE_HALT) {
+		ptr->taskList.push_back(task);
+	}
+	ptr->lock.unlock();
 }
 
 void nemo::ThreadPool::halt(void)
 {
 	auto& ptr = ThreadPool::instance;
-	
+	ptr->lock.lock();
+	ptr->status = ThreadPoolTaskType::TASK_TYPE_HALT;
+	ptr->taskList.clear();
 	for (size_t i = 0; i < ptr->threadCount; ++i) {
-		ptr->lock.lock();
-
-		ptr->lock.unlock();
+		auto task = make_shared<nemo::IThreadPoolTask>();
+		task->type = ThreadPoolTaskType::TASK_TYPE_HALT;
+		ptr->taskList.push_back(task);
 	}
-	
-	ptr->threadCount = 0;
-	ptr->interval = 0;
+	ptr->lock.unlock();
 }
 
 void nemo::ThreadPool::pause(void)
 {
+	auto& ptr = ThreadPool::instance;
+	ptr->lock.lock();
+	ptr->status = ThreadPoolTaskType::TASK_TYPE_PAUSE;
+	ptr->lock.unlock();
 }
 
 void nemo::ThreadPool::resume(void)
 {
+	auto& ptr = ThreadPool::instance;
+	ptr->lock.lock();
+	ptr->status = ThreadPoolTaskType::TASK_TYPE_NONE;
+	ptr->lock.unlock();
 }
