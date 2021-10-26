@@ -7,16 +7,15 @@
 #include <iostream>
 
 namespace nemo {
-	enum ThreadPoolTaskType {
-		TASK_TYPE_NONE,
-		TASK_TYPE_HALT,
-		TASK_TYPE_PAUSE,
-		TASK_TYPE_RESUME
+	enum class ThreadPoolStatus {
+		STATUS_TYPE_NONE,
+		STATUS_TYPE_HALT,
+		STATUS_TYPE_PAUSE,
+		STATUS_TYPE_RESUME
 	};
 
 	class IThreadPoolTask {
 	public:
-		enum ThreadPoolTaskType type = TASK_TYPE_NONE;
 		virtual void run(void) = 0;
 	};
 
@@ -29,7 +28,7 @@ namespace nemo {
 		//time in ms
 		unsigned int interval = 0;
 		//ThreadPool status
-		enum ThreadPoolTaskType status = TASK_TYPE_NONE;
+		ThreadPoolStatus status = ThreadPoolStatus::STATUS_TYPE_PAUSE;
 		//mutex for task list
 		std::mutex lock;
 		std::list<std::shared_ptr<IThreadPoolTask>> taskList;
@@ -44,20 +43,31 @@ namespace nemo {
 	public:
 		
 		~ThreadPool();
+		
 		//init() must called before get instance
 		static std::shared_ptr<ThreadPool>& init(size_t count = 2, unsigned long time = 10);
+		
 		//init() must called before get instance
 		static std::shared_ptr<ThreadPool>& get(void);
+		
 		//discard all tasks, terminate all threads.after halt(), addTask() will not add new task to thread pool
 		void halt(void);
+		
 		//pause all worker thread
 		void pause(void);
+		
 		//resume from pause
 		void resume(void);
+		
 		//start a new individual thread
 		void startNewThread(std::shared_ptr<IThreadPoolTask> task);
+		
 		//add a new task to rear of list
 		void addTask(std::shared_ptr<IThreadPoolTask> task);
+		
+		//clear taskList, remove all tasks
+		void removeAll();
+		
 		//void exec(void);
 		
 	};
