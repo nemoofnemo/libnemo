@@ -20,6 +20,6 @@ int main(void) {
 	for (int i = 0; i < 10; i++) {
 		tp->addTask(make_shared<task>(i));
 	}
-	tp->exec();
+	
 	return 0;
 }

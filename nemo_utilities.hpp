@@ -45,6 +45,7 @@ namespace nemo {
 
 	public:
 
+		//call halt() and wait until all the threads are exit.
 		~ThreadPool();
 
 		//init() must called before get instance
