@@ -38,6 +38,7 @@ void nemo::ThreadPool::workerThread(void)
 				if (ptr->lock.try_lock()) {
 					if (ptr->taskList.size()) {
 						task = *(ptr->taskList.begin());
+						ptr->taskList.pop_front();
 					}
 					ptr->lock.unlock();
 					task->run();
@@ -74,15 +75,17 @@ std::shared_ptr<ThreadPool>& nemo::ThreadPool::init(size_t count, unsigned long 
 	ThreadPool::instance->lock.lock();
 	allocator<thread> alloc;
 	thread* threads = alloc.allocate(count);
-	alloc.construct(threads, workerThread);
 	for (size_t i = 0; i < count; i++) {
+		alloc.construct(threads + i, workerThread);
 		threads[i].detach();
+		alloc.destroy(threads + i);
+		this_thread::sleep_for(chrono::milliseconds(time));
 	}
-	delete[] threads;
+	alloc.deallocate(threads, count * sizeof(thread));
 	ThreadPool::instance->threadCount = count;
 	ThreadPool::instance->interval = time;
 	ThreadPool::instance->status = ThreadPoolStatus::STATUS_TYPE_NONE;
-	ThreadPool::instance->lock.lock();
+	ThreadPool::instance->lock.unlock();
 
 	cout << "nemo::ThreadPool::init success. count="
 		<< count
@@ -128,6 +131,13 @@ void nemo::ThreadPool::removeAll()
 	ptr->lock.unlock();
 }
 
+void nemo::ThreadPool::exec(void)
+{
+	auto& ptr = ThreadPool::instance;
+	while (ptr->status != ThreadPoolStatus::STATUS_TYPE_HALT)
+		this_thread::sleep_for(chrono::milliseconds(ptr->interval));
+}
+
 void nemo::ThreadPool::halt(void)
 {
 	auto& ptr = ThreadPool::instance;
@@ -135,6 +145,10 @@ void nemo::ThreadPool::halt(void)
 	ptr->status = ThreadPoolStatus::STATUS_TYPE_HALT;
 	ptr->taskList.clear();
 	ptr->lock.unlock();
+
+	while(ptr->threadCount > 0)
+		this_thread::sleep_for(chrono::milliseconds(ptr->interval * 2));
+
 	cout << "nemo::ThreadPool::halt" << endl;
 }
 
