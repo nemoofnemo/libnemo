@@ -169,3 +169,24 @@ void nemo::ThreadPool::resume(void)
 	ptr->lock.unlock();
 	cout << "nemo::ThreadPool::resume" << endl;
 }
+
+std::string nemo::get_random_string(int length)
+{
+	std::string ret;
+	
+	if (length <= 0) {
+		return ret;
+	}
+	
+	auto time = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::steady_clock::now());
+	unsigned key = unsigned(time.time_since_epoch().count() % 86400) + nemp_random_key++;
+	srand(key);
+
+	for (int i = 0; i < length; ++i) {
+		int random = rand();
+		ret += nemo_random_byte_array[random % sizeof(nemo_random_byte_array)];
+		srand(random);
+	}
+
+	return ret;
+}

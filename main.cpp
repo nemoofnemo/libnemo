@@ -15,11 +15,8 @@ public:
 };
 
 int main(void) {
-	ThreadPool::init();
-	auto& tp = ThreadPool::get();
-	for (int i = 0; i < 10; i++) {
-		tp->addTask(make_shared<task>(i));
-	}
-	
+	for(int i = 0; i < 20; ++i)
+		cout << get_random_string(6) << endl;
+
 	return 0;
 }
