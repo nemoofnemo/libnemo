@@ -5,6 +5,7 @@
 #include <chrono>
 #include <mutex>
 #include <iostream>
+#include <map>
 
 namespace nemo {
 
@@ -34,7 +35,7 @@ namespace nemo {
 		};
 
 		//instance
-		static std::shared_ptr<ThreadPool> instance;
+		static std::shared_ptr<ThreadPool> thread_pool_instance;
 		//only worker thread, not include thread start with startNewThread()
 		size_t threadCount = 0;
 		//time in ms
@@ -84,5 +85,33 @@ namespace nemo {
 		//main thread loop
 		void exec(void);
 
+	};
+
+	typedef void (*EventDispatcherCallback)(void*);
+
+	class EventDispatcher final{
+	private:
+		static std::shared_ptr<EventDispatcher> event_dispatcher_instance;
+
+		typedef std::list<EventDispatcherCallback> ListenerList;
+		typedef std::list<EventDispatcherCallback>::iterator ListenerIterator;
+		typedef std::map<std::string, ListenerList> EventDispatcherMap;
+		typedef std::map<std::string, ListenerList>::iterator EventDispatcherMapIterator;
+		EventDispatcherMap data;
+
+		EventDispatcher();
+		EventDispatcher(const EventDispatcher&) = delete;
+		EventDispatcher(const EventDispatcher&&) = delete;
+		EventDispatcher& operator=(const EventDispatcher&) = delete;
+		~EventDispatcher();
+
+	public:
+		static std::shared_ptr<EventDispatcher> instance(void);
+		void clear(void);
+		void add_event(const std::string& event);
+		void remove_event(const std::string& event);
+		void add_listener(const std::string& event, EventDispatcherCallback cb);
+		void remove_listener(const std::string& event);
+		void trigger_event(const std::string& event, void* arg);
 	};
 };
