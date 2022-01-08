@@ -1,4 +1,4 @@
-#include "nemo_utilities.hpp"
+#include "nemo_utilities.h"
 
 using namespace std;
 using namespace nemo;
@@ -8,6 +8,6 @@ void kk(void* arg) {
 }
 
 int main(void) {
-	
+	throw;
 	return 0;
 }

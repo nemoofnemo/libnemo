@@ -1,31 +1,50 @@
-#include "nemo_utilities.hpp"
+#include "nemo_utilities.h"
 
 using namespace std;
 using namespace nemo;
 
-std::shared_ptr<ThreadPool> nemo::ThreadPool::thread_pool_instance = nullptr;
-std::shared_ptr<EventDispatcher> nemo::EventDispatcher::event_dispatcher_instance = nullptr;
-
-nemo::ThreadPool::ThreadPool()
+nemo::ThreadPool::ThreadPool(size_t count, unsigned long time)
 {
+	threadCount = count;
+	interval = time;
+	status = ThreadPoolStatus::STATUS_TYPE_EXEC;
+
+	lock.lock();
+	{
+		allocator<thread> alloc;
+		thread* threads = alloc.allocate(count);
+		for (size_t i = 0; i < count; i++) {
+			alloc.construct(threads + i, workerThread, this);
+			threads[i].detach();
+			alloc.destroy(threads + i);
+			this_thread::sleep_for(chrono::milliseconds(time));
+		}
+		alloc.deallocate(threads, count * sizeof(thread));
+	}
 	
+	lock.unlock();
+
+	cout << "nemo::ThreadPool::init success. count="
+		<< count
+		<< ", interval="
+		<< time
+		<< "ms."
+		<< endl;
 }
 
 nemo::ThreadPool::~ThreadPool()
 {
-	ThreadPool::thread_pool_instance->halt();
-	ThreadPool::thread_pool_instance.reset();
+	halt();
 	cout << "nemo::ThreadPool::~ThreadPool : destructor called." << endl;
 }
 
-void nemo::ThreadPool::workerThread(void)
+void nemo::ThreadPool::workerThread(nemo::ThreadPool* ptr)
 {
-	auto& ptr = ThreadPool::thread_pool_instance;
-	shared_ptr<IThreadPoolTask> task;
+	shared_ptr<nemo::Task> task;
 
-	cout << "nemo::ThreadPool::workerThread " 
-		<< this_thread::get_id() 
-		<< " running." 
+	cout << "nemo::ThreadPool::workerThread "
+		<< this_thread::get_id()
+		<< " running."
 		<< endl;
 
 	for (;;) {
@@ -34,7 +53,7 @@ void nemo::ThreadPool::workerThread(void)
 		else if (ptr->status == ThreadPoolStatus::STATUS_TYPE_PAUSE) {
 			this_thread::sleep_for(chrono::milliseconds(ptr->interval));
 		}
-		else if (ptr->status == ThreadPoolStatus::STATUS_TYPE_NONE) {
+		else if (ptr->status == ThreadPoolStatus::STATUS_TYPE_EXEC) {
 			if (ptr->taskList.size()) {
 				if (ptr->lock.try_lock()) {
 					if (ptr->taskList.size()) {
@@ -48,9 +67,9 @@ void nemo::ThreadPool::workerThread(void)
 			this_thread::sleep_for(chrono::milliseconds(ptr->interval));
 		}
 		else {
-			cout << "nemo::ThreadPool::workerThread " 
-				<< this_thread::get_id() 
-				<< " invalid task type." 
+			cout << "nemo::ThreadPool::workerThread "
+				<< this_thread::get_id()
+				<< " invalid task type."
 				<< endl;
 			break;
 		}
@@ -60,50 +79,13 @@ void nemo::ThreadPool::workerThread(void)
 	ptr->threadCount--;
 	ptr->lock.unlock();
 
-	cout << "nemo::ThreadPool::workerThread " 
-		<< this_thread::get_id() 
-		<< " exit." 
+	cout << "nemo::ThreadPool::workerThread "
+		<< this_thread::get_id()
+		<< " exit."
 		<< endl;
 }
 
-std::shared_ptr<ThreadPool>& nemo::ThreadPool::init(size_t count, unsigned long time)
-{
-	if (ThreadPool::thread_pool_instance) {
-		ThreadPool::thread_pool_instance->halt();
-	}
-
-	ThreadPool::thread_pool_instance.reset(new ThreadPool());
-	ThreadPool::thread_pool_instance->lock.lock();
-	allocator<thread> alloc;
-	thread* threads = alloc.allocate(count);
-	for (size_t i = 0; i < count; i++) {
-		alloc.construct(threads + i, workerThread);
-		threads[i].detach();
-		alloc.destroy(threads + i);
-		this_thread::sleep_for(chrono::milliseconds(time));
-	}
-	alloc.deallocate(threads, count * sizeof(thread));
-	ThreadPool::thread_pool_instance->threadCount = count;
-	ThreadPool::thread_pool_instance->interval = time;
-	ThreadPool::thread_pool_instance->status = ThreadPoolStatus::STATUS_TYPE_NONE;
-	ThreadPool::thread_pool_instance->lock.unlock();
-
-	cout << "nemo::ThreadPool::init success. count="
-		<< count
-		<< ", interval="
-		<< time
-		<< "ms."
-		<< endl;
-
-	return ThreadPool::thread_pool_instance;
-}
-
-std::shared_ptr<ThreadPool>& nemo::ThreadPool::get(void)
-{
-	return ThreadPool::thread_pool_instance;
-}
-
-void nemo::ThreadPool::startNewThread(std::shared_ptr<IThreadPoolTask> task)
+void nemo::ThreadPool::startNewThread(std::shared_ptr<nemo::Task> task)
 {
 	thread t([task]() {
 		task->run();
@@ -114,71 +96,65 @@ void nemo::ThreadPool::startNewThread(std::shared_ptr<IThreadPoolTask> task)
 	t.detach();
 }
 
-void nemo::ThreadPool::addTask(std::shared_ptr<IThreadPoolTask> task)
+void nemo::ThreadPool::addTask(std::shared_ptr<nemo::Task> task)
 {
-	auto& ptr = ThreadPool::thread_pool_instance;
-	ptr->lock.lock();
-	if (ptr->status != ThreadPoolStatus::STATUS_TYPE_HALT) {
-		ptr->taskList.push_back(task);
+	lock.lock();
+	if (status != ThreadPoolStatus::STATUS_TYPE_HALT) {
+		taskList.push_back(task);
 	}
-	ptr->lock.unlock();
+	lock.unlock();
 }
 
 void nemo::ThreadPool::removeAll()
 {
-	auto& ptr = ThreadPool::thread_pool_instance;
-	ptr->lock.lock();
-	ptr->taskList.clear();
-	ptr->lock.unlock();
+	lock.lock();
+	taskList.clear();
+	lock.unlock();
 }
 
 void nemo::ThreadPool::exec(void)
 {
-	auto& ptr = ThreadPool::thread_pool_instance;
-	while (ptr->status != ThreadPoolStatus::STATUS_TYPE_HALT)
-		this_thread::sleep_for(chrono::milliseconds(ptr->interval));
+	while (status != ThreadPoolStatus::STATUS_TYPE_HALT)
+		this_thread::sleep_for(chrono::milliseconds(interval));
 }
 
 void nemo::ThreadPool::halt(void)
 {
-	auto& ptr = ThreadPool::thread_pool_instance;
-	ptr->lock.lock();
-	ptr->status = ThreadPoolStatus::STATUS_TYPE_HALT;
-	ptr->taskList.clear();
-	ptr->lock.unlock();
+	lock.lock();
+	status = ThreadPoolStatus::STATUS_TYPE_HALT;
+	taskList.clear();
+	lock.unlock();
 
-	while(ptr->threadCount > 0)
-		this_thread::sleep_for(chrono::milliseconds(ptr->interval * 2));
+	while (threadCount > 0)
+		this_thread::sleep_for(chrono::milliseconds(interval * 2));
 
 	cout << "nemo::ThreadPool::halt" << endl;
 }
 
 void nemo::ThreadPool::pause(void)
 {
-	auto& ptr = ThreadPool::thread_pool_instance;
-	ptr->lock.lock();
-	ptr->status = ThreadPoolStatus::STATUS_TYPE_PAUSE;
-	ptr->lock.unlock();
+	lock.lock();
+	status = ThreadPoolStatus::STATUS_TYPE_PAUSE;
+	lock.unlock();
 	cout << "nemo::ThreadPool::pause" << endl;
 }
 
 void nemo::ThreadPool::resume(void)
 {
-	auto& ptr = ThreadPool::thread_pool_instance;
-	ptr->lock.lock();
-	ptr->status = ThreadPoolStatus::STATUS_TYPE_NONE;
-	ptr->lock.unlock();
+	lock.lock();
+	status = ThreadPoolStatus::STATUS_TYPE_EXEC;
+	lock.unlock();
 	cout << "nemo::ThreadPool::resume" << endl;
 }
 
 std::string nemo::get_random_string(int length)
 {
 	std::string ret;
-	
+
 	if (length <= 0) {
 		return ret;
 	}
-	
+
 	auto time = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::steady_clock::now());
 	unsigned key = unsigned(time.time_since_epoch().count() % 86400) + nemp_random_key++;
 	srand(key);
@@ -194,52 +170,70 @@ std::string nemo::get_random_string(int length)
 
 nemo::EventDispatcher::EventDispatcher()
 {
+
 }
 
 nemo::EventDispatcher::~EventDispatcher()
 {
-}
 
-std::shared_ptr<EventDispatcher> nemo::EventDispatcher::instance(void)
-{
-	if (!event_dispatcher_instance) {
-		event_dispatcher_instance = std::make_shared< EventDispatcher>();
-	}
-	return event_dispatcher_instance;
 }
 
 void nemo::EventDispatcher::clear(void)
 {
-	data.clear();
+	data_lock.lock();
+	data_map.clear();
+	data_lock.unlock();
 }
 
 void nemo::EventDispatcher::add_event(const std::string& event)
 {
-	data[event];
+	data_lock.lock();
+	data_map[event];
+	data_lock.unlock();
 }
 
 void nemo::EventDispatcher::remove_event(const std::string& event)
 {
-	auto it = data.find(event);
-	if (it != data.end()) {
-		data.erase(it);
+	data_lock.lock();
+	auto it = data_map.find(event);
+	if (it != data_map.end()) {
+		data_map.erase(it);
 	}
+	data_lock.unlock();
 }
 
-void nemo::EventDispatcher::add_listener(const std::string& event, EventDispatcherCallback cb)
+void nemo::EventDispatcher::add_listener(const std::string& event, std::shared_ptr<nemo::Task> task)
 {
-	data[event].push_back(cb);
+	data_lock.lock();
+	data_map[event].push_back(task);
+	data_lock.unlock();
 }
 
-void nemo::EventDispatcher::trigger_event(const std::string& event, void* arg)
+void nemo::EventDispatcher::remove_listener(std::shared_ptr<nemo::Task> task)
 {
-	auto target = data.find(event);
-	if (target != data.end()) {
+	data_lock.lock();
+	
+	data_lock.unlock();
+}
+
+void nemo::EventDispatcher::trigger_event(const std::string& event)
+{
+	data_lock.lock();
+	auto target = data_map.find(event);
+	if (target != data_map.end()) {
 		auto& ls = target->second;
 		auto it = ls.begin();
 		while (it != ls.end()) {
-			(*it)(arg);
+			(*it)->run();
 			it++;
 		}
 	}
+	data_lock.unlock();
+}
+
+void nemo::EventDispatcher::debug_show(void)
+{
+	data_lock.lock();
+
+	data_lock.unlock();
 }

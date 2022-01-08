@@ -1,5 +1,5 @@
 #include <iostream>
-#include "nemo_utilities.hpp"
+#include "nemo_utilities.h"
 
 using namespace std;
 using namespace nemo;
@@ -90,7 +90,7 @@ Base baseTest(void) {
 	return b;
 }
 
-class task : public IThreadPoolTask {
+class task : public Task {
 public:
 	int m_num = 0;
 	task(int num) {
