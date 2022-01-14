@@ -1,4 +1,5 @@
 #pragma once
+
 #include <list>
 #include <memory>
 #include <thread>
@@ -16,6 +17,27 @@ namespace nemo {
 			'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z' };
 
 	std::string get_random_string(int length);
+
+	//class RWLock {
+	//private:
+	//	std::mutex mtx_read;
+	//	std::mutex mtx_write;
+	//	std::atomic_int read_count = 0;
+
+	//	RWLock(const RWLock&) = delete;
+	//	RWLock(const RWLock&&) = delete;
+	//	void operator=(const RWLock&) = delete;
+
+	//public:
+	//	explicit RWLock();
+	//	virtual ~RWLock();
+
+	//	void lock_read();
+	//	void unlock_read();
+
+	//	void lock_write();
+	//	void unlock_write();
+	//};
 
 	class Task
 	{
@@ -102,7 +124,7 @@ namespace nemo {
 		void add_event(const std::string& event);
 		void remove_event(const std::string& event);
 		void add_listener(const std::string& event, std::shared_ptr<nemo::Task> task);
-		void remove_listener(std::shared_ptr<nemo::Task> task);
+		void remove_listener(const std::string& event, std::shared_ptr<nemo::Task> task);
 		void trigger_event(const std::string& event);
 		void debug_show(void);
 	};

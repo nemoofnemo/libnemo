@@ -9,8 +9,8 @@ nemo::ThreadPool::ThreadPool(size_t count, unsigned long time)
 	interval = time;
 	status = ThreadPoolStatus::STATUS_TYPE_EXEC;
 
-	lock.lock();
 	{
+		std::lock_guard<std::mutex> lg(lock);
 		allocator<thread> alloc;
 		thread* threads = alloc.allocate(count);
 		for (size_t i = 0; i < count; i++) {
@@ -21,8 +21,6 @@ nemo::ThreadPool::ThreadPool(size_t count, unsigned long time)
 		}
 		alloc.deallocate(threads, count * sizeof(thread));
 	}
-	
-	lock.unlock();
 
 	cout << "nemo::ThreadPool::init success. count="
 		<< count
@@ -98,18 +96,16 @@ void nemo::ThreadPool::startNewThread(std::shared_ptr<nemo::Task> task)
 
 void nemo::ThreadPool::addTask(std::shared_ptr<nemo::Task> task)
 {
-	lock.lock();
+	std::lock_guard<std::mutex> lg(lock);
 	if (status != ThreadPoolStatus::STATUS_TYPE_HALT) {
 		taskList.push_back(task);
 	}
-	lock.unlock();
 }
 
 void nemo::ThreadPool::removeAll()
 {
-	lock.lock();
+	std::lock_guard<std::mutex> lg(lock);
 	taskList.clear();
-	lock.unlock();
 }
 
 void nemo::ThreadPool::exec(void)
@@ -120,10 +116,11 @@ void nemo::ThreadPool::exec(void)
 
 void nemo::ThreadPool::halt(void)
 {
-	lock.lock();
-	status = ThreadPoolStatus::STATUS_TYPE_HALT;
-	taskList.clear();
-	lock.unlock();
+	{
+		std::lock_guard<std::mutex> lg(lock);
+		status = ThreadPoolStatus::STATUS_TYPE_HALT;
+		taskList.clear();
+	}
 
 	while (threadCount > 0)
 		this_thread::sleep_for(chrono::milliseconds(interval * 2));
@@ -180,45 +177,63 @@ nemo::EventDispatcher::~EventDispatcher()
 
 void nemo::EventDispatcher::clear(void)
 {
-	data_lock.lock();
+	std::lock_guard<std::mutex> lg(data_lock);
 	data_map.clear();
-	data_lock.unlock();
 }
 
 void nemo::EventDispatcher::add_event(const std::string& event)
 {
-	data_lock.lock();
+	std::lock_guard<std::mutex> lg(data_lock);
 	data_map[event];
-	data_lock.unlock();
 }
 
 void nemo::EventDispatcher::remove_event(const std::string& event)
 {
-	data_lock.lock();
+	std::lock_guard<std::mutex> lg(data_lock);
 	auto it = data_map.find(event);
 	if (it != data_map.end()) {
 		data_map.erase(it);
 	}
-	data_lock.unlock();
 }
 
 void nemo::EventDispatcher::add_listener(const std::string& event, std::shared_ptr<nemo::Task> task)
 {
-	data_lock.lock();
+	if (!task) {
+		return;
+	}
+
+	std::lock_guard<std::mutex> lg(data_lock);
 	data_map[event].push_back(task);
-	data_lock.unlock();
 }
 
-void nemo::EventDispatcher::remove_listener(std::shared_ptr<nemo::Task> task)
+void nemo::EventDispatcher::remove_listener(const std::string& event, std::shared_ptr<nemo::Task> task)
 {
-	data_lock.lock();
+	if (!task) {
+		return;
+	}
+
+	std::lock_guard<std::mutex> lg(data_lock);
 	
-	data_lock.unlock();
+	auto target = data_map.find(event);
+	if (target != data_map.end()) {
+		auto& ls = target->second;
+		auto it = ls.begin();
+
+		while (it != ls.end()) {
+			if (*it == task) {
+				ls.erase(it);
+				break;
+			}
+			it++;
+		}
+	}
+
 }
 
 void nemo::EventDispatcher::trigger_event(const std::string& event)
 {
-	data_lock.lock();
+	std::lock_guard<std::mutex> lg(data_lock);
+
 	auto target = data_map.find(event);
 	if (target != data_map.end()) {
 		auto& ls = target->second;
@@ -228,12 +243,25 @@ void nemo::EventDispatcher::trigger_event(const std::string& event)
 			it++;
 		}
 	}
-	data_lock.unlock();
 }
 
 void nemo::EventDispatcher::debug_show(void)
 {
-	data_lock.lock();
+	cout << "----debug_show----" << endl;
 
-	data_lock.unlock();
+	std::lock_guard<std::mutex> lg(data_lock);
+	
+	auto map_it = data_map.begin();
+	while (map_it != data_map.end()) {
+		cout << map_it->first << endl << '\t';
+		auto ls_it = map_it->second.begin();
+		while (ls_it != map_it->second.end()) {
+			cout << *ls_it << ", ";
+			ls_it++;
+		}
+		cout << endl;
+		map_it++;
+	}
+
+	cout << "--debug_show end--" << endl;
 }
