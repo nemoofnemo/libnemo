@@ -1,103 +1,51 @@
-#include <iostream>
 #include "nemo_utilities.h"
 
 using namespace std;
 using namespace nemo;
 
-class Base {
+class cb : public nemo::Task {
 private:
-	int m_data;
-
+	string m_str;
 public:
-	Base() {
-		m_data = 0;
-		cout << "Base construct1 " << this << endl;
-	}
-
-	explicit Base(int data) {
-		m_data = data;
-		cout << "Base construct2 " << this << endl;
-	}
-
-	Base(const Base& b) {
-		m_data = b.m_data;
-		cout << "Base construct3 " << this << endl;
-	}
-
-	Base(Base&& b) noexcept {
-		m_data = b.m_data;
-		b.m_data = 0;
-		cout << "Base move construct " << this << "target: " << &b << endl;
-	}
-
-	//Base(int data) {
-	//	m_data = data;
-	//	cout << "Base construct2" << endl;
-	//}
-
-	virtual ~Base() {
-		cout << "Base destroy " << this << endl;
-	}
-
-	void func(void) {
-		cout << "Base func " << m_data << endl;
-	}
-
-	virtual void test(void) {
-		cout << "Base test" << endl;
-	}
-
-	Base& operator=(int data) {
-		m_data = data;
-		cout << "Base operator= int" << endl;
-		return *this;
-	}
-
-	Base& operator=(const Base& b) {
-		m_data = b.m_data;
-		cout << "Base operator= const Base& b" << endl;
-		return *this;
-	}
-};
-
-class d1 : public Base {
-private:
-	int m_data;
-
-public:
-	d1() = delete;
-
-	explicit d1(int data) :Base(data) {
-		m_data = data;
-		cout << "d1 construct1" << endl;
-	}
-
-	virtual ~d1() {
-		cout << "d1 destroy" << endl;
-	}
-
-	void func(void) {
-		cout << "d1 func " << m_data << endl;
-	}
-
-	virtual void test(void) {
-		cout << "d1 test" << endl;
-	}
-};
-
-Base baseTest(void) {
-	Base b(5);
-	return b;
-}
-
-class task : public Task {
-public:
-	int m_num = 0;
-	task(int num) {
-		m_num = num;
+	cb(string str) {
+		m_str = str;
 	}
 	void run(void) {
-		cout << "task" << m_num << endl;
+		cout << m_str << endl;
 	}
 };
 
+void test_event_dispatcher(void) {
+	EventDispatcher ed;
+	std::shared_ptr<cb> c1 = std::make_shared<cb>("qqqq");
+	std::shared_ptr<cb> c2 = std::make_shared<cb>("kkkk");
+	std::shared_ptr<cb> c3 = std::make_shared<cb>("aaaa");
+
+	ed.add_event("wasted");
+	ed.add_listener("fuck", c1);
+	ed.add_listener("fuck", c2);
+	ed.add_listener("shit", c3);
+
+	ed.debug_show();
+	ed.trigger_event("wasted");
+	ed.trigger_event("fuck");
+	ed.trigger_event("shit");
+
+	ed.remove_event("aaa");
+	ed.remove_event("wasted");
+	ed.remove_event("shit");
+	ed.debug_show();
+
+	ed.remove_listener("fuck", c1);
+	ed.remove_listener("fuck", c1);
+	ed.remove_listener("fuck", nullptr);
+	ed.debug_show();
+
+	ed.trigger_event("shit");
+	ed.trigger_event("fuck");
+}
+
+int main(void) {
+	test_event_dispatcher();
+	return 0;
+}

@@ -139,9 +139,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="nemo_utilities.cpp" />
     <ClCompile Include="test.cpp" />
+    <ClCompile Include="nemo_utilities.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="nemo_utilities.h" />
