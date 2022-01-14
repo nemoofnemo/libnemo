@@ -45,7 +45,14 @@ void test_event_dispatcher(void) {
 	ed.trigger_event("fuck");
 }
 
+void test_random_string(void) {
+	for (int i = 0; i < 20; i++) {
+		cout << get_random_string(8) << endl;
+	}
+}
+
 int main(void) {
 	test_event_dispatcher();
+	test_random_string();
 	return 0;
 }

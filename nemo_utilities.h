@@ -109,6 +109,7 @@ namespace nemo {
 		typedef std::list<std::shared_ptr<nemo::Task>>::iterator ListenerIterator;
 		typedef std::map<std::string, ListenerList> EventDispatcherMap;
 		typedef std::map<std::string, ListenerList>::iterator EventDispatcherMapIterator;
+
 		EventDispatcherMap data_map;
 		std::mutex data_lock;
 
@@ -120,12 +121,25 @@ namespace nemo {
 		EventDispatcher();
 		~EventDispatcher();
 
+		//remove all event and listener
 		void clear(void);
+
+		//add event
 		void add_event(const std::string& event);
+
+		//remove specific event and its listeners
 		void remove_event(const std::string& event);
+
+		//add a task to event.(callback to event)
 		void add_listener(const std::string& event, std::shared_ptr<nemo::Task> task);
+
+		//remove specific listener
 		void remove_listener(const std::string& event, std::shared_ptr<nemo::Task> task);
+
+		//trigger specific event's callback
 		void trigger_event(const std::string& event);
+
+		//for debug: display all data via cout.
 		void debug_show(void);
 	};
 };
