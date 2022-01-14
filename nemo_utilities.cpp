@@ -83,8 +83,11 @@ void nemo::ThreadPool::workerThread(nemo::ThreadPool* ptr)
 		<< endl;
 }
 
-void nemo::ThreadPool::startNewThread(std::shared_ptr<nemo::Task> task)
+void nemo::ThreadPool::start_new_thread(std::shared_ptr<nemo::Task> task)
 {
+	if (!task)
+		return;
+
 	thread t([task]() {
 		task->run();
 		});
@@ -94,15 +97,18 @@ void nemo::ThreadPool::startNewThread(std::shared_ptr<nemo::Task> task)
 	t.detach();
 }
 
-void nemo::ThreadPool::addTask(std::shared_ptr<nemo::Task> task)
+void nemo::ThreadPool::add_task(std::shared_ptr<nemo::Task> task)
 {
+	if (!task)
+		return;
+
 	std::lock_guard<std::mutex> lg(lock);
 	if (status != ThreadPoolStatus::STATUS_TYPE_HALT) {
 		taskList.push_back(task);
 	}
 }
 
-void nemo::ThreadPool::removeAll()
+void nemo::ThreadPool::remove_all()
 {
 	std::lock_guard<std::mutex> lg(lock);
 	taskList.clear();
@@ -123,7 +129,7 @@ void nemo::ThreadPool::halt(void)
 	}
 
 	while (threadCount > 0)
-		this_thread::sleep_for(chrono::milliseconds(interval * 2));
+		this_thread::sleep_for(chrono::milliseconds(interval));
 
 	cout << "nemo::ThreadPool::halt" << endl;
 }

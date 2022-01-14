@@ -50,9 +50,3 @@ void test_random_string(void) {
 		cout << get_random_string(8) << endl;
 	}
 }
-
-int main(void) {
-	test_event_dispatcher();
-	test_random_string();
-	return 0;
-}

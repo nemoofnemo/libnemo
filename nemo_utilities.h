@@ -18,27 +18,6 @@ namespace nemo {
 
 	std::string get_random_string(int length);
 
-	//class RWLock {
-	//private:
-	//	std::mutex mtx_read;
-	//	std::mutex mtx_write;
-	//	std::atomic_int read_count = 0;
-
-	//	RWLock(const RWLock&) = delete;
-	//	RWLock(const RWLock&&) = delete;
-	//	void operator=(const RWLock&) = delete;
-
-	//public:
-	//	explicit RWLock();
-	//	virtual ~RWLock();
-
-	//	void lock_read();
-	//	void unlock_read();
-
-	//	void lock_write();
-	//	void unlock_write();
-	//};
-
 	class Task
 	{
 	public:
@@ -90,13 +69,13 @@ namespace nemo {
 		void resume(void);
 
 		//start a new individual thread
-		void startNewThread(std::shared_ptr<Task> task);
+		void start_new_thread(std::shared_ptr<Task> task);
 
 		//add a new task to rear of list
-		void addTask(std::shared_ptr<Task> task);
+		void add_task(std::shared_ptr<Task> task);
 
 		//clear taskList, remove all tasks
-		void removeAll();
+		void remove_all();
 
 		//main thread loop
 		void exec(void);
