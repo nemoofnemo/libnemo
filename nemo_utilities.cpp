@@ -3,6 +3,21 @@
 using namespace std;
 using namespace nemo;
 
+void nemo::debug_log(const char* str, ...) {
+
+#ifndef _DEBUG
+	return;
+#else
+	if (!str)
+		return;
+
+	va_list args;
+	va_start(args, str);
+	fprintf_s(stderr, str, args);
+	va_end(args);
+#endif
+}
+
 nemo::ThreadPool::ThreadPool(size_t count, unsigned long time)
 {
 	threadCount = count;

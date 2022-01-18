@@ -8,8 +8,11 @@
 #include <iostream>
 #include <map>
 #include <exception>
+#include <cstdarg>
 
 namespace nemo {
+
+	void debug_log(const char* str, ...);
 
 	static int nemp_random_key = 0;
 	static char nemo_random_byte_array[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
@@ -82,7 +85,7 @@ namespace nemo {
 
 	};
 
-	class EventDispatcher final{
+	class EventDispatcher final {
 	private:
 		typedef std::list<std::shared_ptr<nemo::Task>> ListenerList;
 		typedef std::list<std::shared_ptr<nemo::Task>>::iterator ListenerIterator;
