@@ -10,9 +10,13 @@
 #include <exception>
 #include <cstdarg>
 
+#ifdef _MSC_VER
+#include <Windows.h>
+#endif
+
 namespace nemo {
 
-	void debug_log(const char* str, ...);
+	void debug_log(const std::string& str);
 
 	static int nemp_random_key = 0;
 	static char nemo_random_byte_array[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
@@ -20,6 +24,29 @@ namespace nemo {
 			'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z' };
 
 	std::string get_random_string(int length);
+
+	class ByteArray {
+	private:
+		std::shared_ptr<uint8_t> m_ptr = nullptr;
+		size_t m_size = 0;
+		size_t m_cap = 0;
+
+	public:
+		ByteArray();
+		ByteArray(void* data, size_t size);
+		ByteArray(const ByteArray& arr);
+		ByteArray(const ByteArray&& arr);
+		virtual ~ByteArray();
+
+		ByteArray& operator+(const ByteArray& right);
+		ByteArray& operator=(const ByteArray& right);
+
+		void read_all(void* out, size_t buf_size);
+		void read(void* out,size_t buf_size, size_t start, size_t end);
+		void write(void* in, size_t loc, size_t len);
+		void append(void* in, size_t len);
+		void clear(void);
+	};
 
 	class Task
 	{

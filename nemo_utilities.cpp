@@ -3,20 +3,24 @@
 using namespace std;
 using namespace nemo;
 
-void nemo::debug_log(const char* str, ...) {
-
+#ifdef _MSC_VER
+void nemo::debug_log(const std::string& str) {
 #ifndef _DEBUG
 	return;
 #else
-	if (!str)
-		return;
-
-	va_list args;
-	va_start(args, str);
-	fprintf_s(stderr, str, args);
-	va_end(args);
+	OutputDebugStringA(str.c_str());
+	OutputDebugStringA("\n");
 #endif
 }
+#else
+void nemo::debug_log(const std::string& str) {
+#ifndef _DEBUG
+	return;
+#else
+	std::cerr << str << std::endl;
+#endif
+}
+#endif // _MSC_VER
 
 nemo::ThreadPool::ThreadPool(size_t count, unsigned long time)
 {
