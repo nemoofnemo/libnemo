@@ -9,6 +9,7 @@
 #include <map>
 #include <exception>
 #include <cstdarg>
+#include <cstring>
 
 #ifdef _MSC_VER
 #include <Windows.h>
@@ -18,6 +19,7 @@ namespace nemo {
 
 	void debug_log(const std::string& str);
 
+	static constexpr size_t BYTE_ARRAY_ALIGN = sizeof(size_t);
 	static int nemp_random_key = 0;
 	static char nemo_random_byte_array[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 			'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
@@ -27,24 +29,30 @@ namespace nemo {
 
 	class ByteArray {
 	private:
-		std::shared_ptr<uint8_t> m_ptr = nullptr;
+		uint8_t* m_ptr = nullptr;
 		size_t m_size = 0;
 		size_t m_cap = 0;
 
 	public:
-		ByteArray();
+		ByteArray() noexcept;
 		ByteArray(void* data, size_t size);
-		ByteArray(const ByteArray& arr);
-		ByteArray(const ByteArray&& arr);
-		virtual ~ByteArray();
+		ByteArray(const ByteArray& arr) noexcept;
+		ByteArray(ByteArray&& arr) noexcept;
+		virtual ~ByteArray() noexcept;
 
 		ByteArray& operator+(const ByteArray& right);
 		ByteArray& operator=(const ByteArray& right);
+		uint8_t& operator[](const size_t index);
+		ByteArray& operator=(ByteArray&& right) = delete;
 
-		void read_all(void* out, size_t buf_size);
-		void read(void* out,size_t buf_size, size_t start, size_t end);
-		void write(void* in, size_t loc, size_t len);
+		size_t read_all(void* out, size_t buf_size);
+		size_t read_all(ByteArray* arr);
+		size_t read(void* out,size_t buf_size, size_t start, size_t end);
+		size_t read(ByteArray* arr, size_t start, size_t end);
+		size_t write(void* in, size_t loc, size_t len);
+		void write(ByteArray* arr, size_t loc, size_t len);
 		void append(void* in, size_t len);
+		void append(ByteArray* arr, size_t len);
 		void clear(void);
 	};
 

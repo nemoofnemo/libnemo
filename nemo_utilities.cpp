@@ -1,8 +1,5 @@
 #include "nemo_utilities.h"
 
-using namespace std;
-using namespace nemo;
-
 #ifdef _MSC_VER
 void nemo::debug_log(const std::string& str) {
 #ifndef _DEBUG
@@ -10,6 +7,7 @@ void nemo::debug_log(const std::string& str) {
 #else
 	OutputDebugStringA(str.c_str());
 	OutputDebugStringA("\n");
+	std::cout << str << std::endl;
 #endif
 }
 #else
@@ -30,45 +28,45 @@ nemo::ThreadPool::ThreadPool(size_t count, unsigned long time)
 
 	{
 		std::lock_guard<std::mutex> lg(lock);
-		allocator<thread> alloc;
-		thread* threads = alloc.allocate(count);
+		std::allocator<std::thread> alloc;
+		std::thread* threads = alloc.allocate(count);
 		for (size_t i = 0; i < count; i++) {
 			alloc.construct(threads + i, workerThread, this);
 			threads[i].detach();
 			alloc.destroy(threads + i);
-			this_thread::sleep_for(chrono::milliseconds(time));
+			std::this_thread::sleep_for(std::chrono::milliseconds(time));
 		}
-		alloc.deallocate(threads, count * sizeof(thread));
+		alloc.deallocate(threads, count * sizeof(std::thread));
 	}
 
-	cout << "nemo::ThreadPool::init success. count="
+	std::cout << "nemo::ThreadPool::init success. count="
 		<< count
 		<< ", interval="
 		<< time
 		<< "ms."
-		<< endl;
+		<< std::endl;
 }
 
 nemo::ThreadPool::~ThreadPool()
 {
 	halt();
-	cout << "nemo::ThreadPool::~ThreadPool : destructor called." << endl;
+	std::cout << "nemo::ThreadPool::~ThreadPool : destructor called." << std::endl;
 }
 
 void nemo::ThreadPool::workerThread(nemo::ThreadPool* ptr)
 {
-	shared_ptr<nemo::Task> task;
+	std::shared_ptr<nemo::Task> task;
 
-	cout << "nemo::ThreadPool::workerThread "
-		<< this_thread::get_id()
+	std::cout << "nemo::ThreadPool::workerThread "
+		<< std::this_thread::get_id()
 		<< " running."
-		<< endl;
+		<< std::endl;
 
 	for (;;) {
 		if (ptr->status == ThreadPoolStatus::STATUS_TYPE_HALT)
 			break;
 		else if (ptr->status == ThreadPoolStatus::STATUS_TYPE_PAUSE) {
-			this_thread::sleep_for(chrono::milliseconds(ptr->interval));
+			std::this_thread::sleep_for(std::chrono::milliseconds(ptr->interval));
 		}
 		else if (ptr->status == ThreadPoolStatus::STATUS_TYPE_EXEC) {
 			if (ptr->taskList.size()) {
@@ -81,13 +79,13 @@ void nemo::ThreadPool::workerThread(nemo::ThreadPool* ptr)
 					task->run();
 				}
 			}
-			this_thread::sleep_for(chrono::milliseconds(ptr->interval));
+			std::this_thread::sleep_for(std::chrono::milliseconds(ptr->interval));
 		}
 		else {
-			cout << "nemo::ThreadPool::workerThread "
-				<< this_thread::get_id()
+			std::cout << "nemo::ThreadPool::workerThread "
+				<< std::this_thread::get_id()
 				<< " invalid task type."
-				<< endl;
+				<< std::endl;
 			break;
 		}
 	}
@@ -96,10 +94,10 @@ void nemo::ThreadPool::workerThread(nemo::ThreadPool* ptr)
 	ptr->threadCount--;
 	ptr->lock.unlock();
 
-	cout << "nemo::ThreadPool::workerThread "
-		<< this_thread::get_id()
+	std::cout << "nemo::ThreadPool::workerThread "
+		<< std::this_thread::get_id()
 		<< " exit."
-		<< endl;
+		<< std::endl;
 }
 
 void nemo::ThreadPool::start_new_thread(std::shared_ptr<nemo::Task> task)
@@ -107,12 +105,12 @@ void nemo::ThreadPool::start_new_thread(std::shared_ptr<nemo::Task> task)
 	if (!task)
 		return;
 
-	thread t([task]() {
+	std::thread t([task]() {
 		task->run();
 		});
-	cout << "nemo::ThreadPool::startNewThread "
+	std::cout << "nemo::ThreadPool::startNewThread "
 		<< t.get_id()
-		<< endl;
+		<< std::endl;
 	t.detach();
 }
 
@@ -136,7 +134,7 @@ void nemo::ThreadPool::remove_all()
 void nemo::ThreadPool::exec(void)
 {
 	while (status != ThreadPoolStatus::STATUS_TYPE_HALT)
-		this_thread::sleep_for(chrono::milliseconds(interval));
+		std::this_thread::sleep_for(std::chrono::milliseconds(interval));
 }
 
 void nemo::ThreadPool::halt(void)
@@ -148,9 +146,9 @@ void nemo::ThreadPool::halt(void)
 	}
 
 	while (threadCount > 0)
-		this_thread::sleep_for(chrono::milliseconds(interval));
+		std::this_thread::sleep_for(std::chrono::milliseconds(interval));
 
-	cout << "nemo::ThreadPool::halt" << endl;
+	std::cout << "nemo::ThreadPool::halt" << std::endl;
 }
 
 void nemo::ThreadPool::pause(void)
@@ -158,7 +156,7 @@ void nemo::ThreadPool::pause(void)
 	lock.lock();
 	status = ThreadPoolStatus::STATUS_TYPE_PAUSE;
 	lock.unlock();
-	cout << "nemo::ThreadPool::pause" << endl;
+	std::cout << "nemo::ThreadPool::pause" << std::endl;
 }
 
 void nemo::ThreadPool::resume(void)
@@ -166,7 +164,7 @@ void nemo::ThreadPool::resume(void)
 	lock.lock();
 	status = ThreadPoolStatus::STATUS_TYPE_EXEC;
 	lock.unlock();
-	cout << "nemo::ThreadPool::resume" << endl;
+	std::cout << "nemo::ThreadPool::resume" << std::endl;
 }
 
 std::string nemo::get_random_string(int length)
@@ -272,21 +270,184 @@ void nemo::EventDispatcher::trigger_event(const std::string& event)
 
 void nemo::EventDispatcher::debug_show(void)
 {
-	cout << "----debug_show----" << endl;
+	std::cout << "----debug_show----" << std::endl;
 
 	std::lock_guard<std::mutex> lg(data_lock);
 	
 	auto map_it = data_map.begin();
 	while (map_it != data_map.end()) {
-		cout << map_it->first << endl << '\t';
+		std::cout << map_it->first << std::endl << '\t';
 		auto ls_it = map_it->second.begin();
 		while (ls_it != map_it->second.end()) {
-			cout << *ls_it << ", ";
+			std::cout << *ls_it << ", ";
 			ls_it++;
 		}
-		cout << endl;
+		std::cout << std::endl;
 		map_it++;
 	}
 
-	cout << "--debug_show end--" << endl;
+	std::cout << "--debug_show end--" << std::endl;
+}
+
+nemo::ByteArray::ByteArray()
+{
+}
+
+nemo::ByteArray::ByteArray(void* data, size_t size)
+{
+	if (!data)
+		throw std::invalid_argument("ByteArray: nullptr");
+	if(size == 0)
+		throw std::invalid_argument("ByteArray: invalid size");
+
+	m_cap = (size % BYTE_ARRAY_ALIGN == 0)? 
+		size : (size / BYTE_ARRAY_ALIGN + 1) * BYTE_ARRAY_ALIGN;
+	m_ptr = (uint8_t*)malloc(m_cap);
+	m_size = size;
+	memcpy_s(m_ptr, m_cap, data, size);
+}
+
+nemo::ByteArray::ByteArray(const ByteArray& arr)
+{
+	if (!arr.m_ptr)
+		return;
+
+	m_cap = arr.m_cap;
+	m_size = arr.m_size;
+	m_ptr = (uint8_t*)malloc(m_cap);
+	if (!m_ptr)
+		throw;
+	memcpy_s(m_ptr, m_cap, arr.m_ptr, arr.m_size);
+}
+
+nemo::ByteArray::ByteArray(ByteArray&& arr)
+{
+	if (!arr.m_ptr)
+		return;
+
+	m_cap = arr.m_cap;
+	m_size = arr.m_size;
+	m_ptr = arr.m_ptr;
+
+	arr.m_ptr = nullptr;
+	arr.m_cap = 0;
+	arr.m_size = 0;
+}
+
+nemo::ByteArray::~ByteArray()
+{
+	if (m_ptr)
+		free(m_ptr);
+}
+
+nemo::ByteArray& nemo::ByteArray::operator+(const ByteArray& right)
+{
+	if (!right.m_ptr)
+		return *this;
+
+	if (m_size + right.m_size < m_size) {
+		throw std::overflow_error("nemo::ByteArray::operator+");
+		return *this;
+	}
+
+	if (m_cap >= m_size + right.m_size) {
+		memcpy_s(m_ptr + m_size, m_cap - m_size, right.m_ptr, right.m_size);
+		m_size += right.m_size;
+	}
+	else {
+		size_t target = ((m_size + right.m_size) % BYTE_ARRAY_ALIGN == 0) ?
+			m_size + right.m_size : ((m_size + right.m_size) / BYTE_ARRAY_ALIGN + 1) * BYTE_ARRAY_ALIGN;
+		uint8_t* tmp = m_ptr;
+
+		if ((m_ptr = (uint8_t*)realloc(m_ptr, target)) == nullptr) {
+			free(tmp);
+			throw;
+		}
+
+		memcpy_s(m_ptr + m_size, target - m_size, right.m_ptr, right.m_size);
+		m_size += right.m_size;
+		m_cap = target;
+	}
+
+	return *this;
+}
+
+nemo::ByteArray& nemo::ByteArray::operator=(const ByteArray& right)
+{
+	if (m_ptr) {
+		delete[] m_ptr;
+	}
+	
+	if (right.m_ptr) {
+		m_ptr = new uint8_t[right.m_cap];
+		m_size = right.m_size;
+		m_cap = right.m_cap;
+		memcpy_s(m_ptr, m_cap, right.m_ptr, right.m_size);
+	}
+	else {
+		m_ptr = nullptr;
+		m_size = 0;
+		m_cap = 0;
+	}
+
+	return *this;
+}
+
+uint8_t& nemo::ByteArray::operator[](const size_t index)
+{
+	if (index >= m_size)
+		throw std::out_of_range("nemo::ByteArray::operator[]");
+
+	return *(m_ptr + index);
+}
+
+size_t nemo::ByteArray::read(void* out, size_t buf_size, size_t start, size_t end)
+{
+	if(!out)
+		throw std::invalid_argument("nemo::ByteArray::read: nullptr");
+	if(end < start)
+		throw std::invalid_argument("nemo::ByteArray::read");
+	if (start > m_size || end > m_size)
+		throw std::out_of_range("nemo::ByteArray::read");
+	if (buf_size == 0 || start == end)
+		return 0;
+
+	if (buf_size >= end - start) {
+		memcpy_s(out, buf_size, m_ptr + start, end - start);
+		return end - start;
+	}
+	else {
+		memcpy_s(out, buf_size, m_ptr + start, buf_size);
+		return buf_size;
+	}
+}
+
+size_t nemo::ByteArray::write(void* in, size_t loc, size_t len)
+{
+	if (!in)
+		throw std::invalid_argument("nemo::ByteArray::write: nullptr");
+	if (loc > m_size)
+		throw std::out_of_range("nemo::ByteArray::write");
+	if (len == 0)
+		return 0;
+
+	if (loc + len <= m_cap) {
+		memcpy_s(m_ptr + loc, m_cap - loc, in, len);
+		if (loc + len > m_size)
+			m_size = loc + len;
+	}
+	else {
+		uint8_t* tmp = m_ptr;
+		size_t target = ((loc + len) % nemo::BYTE_ARRAY_ALIGN == 0) ?
+			loc + len : ((loc + len) / nemo::BYTE_ARRAY_ALIGN + 1) * nemo::BYTE_ARRAY_ALIGN;
+		if ((m_ptr = (uint8_t*)realloc(m_ptr, target)) == nullptr) {
+			free(tmp);
+			throw;
+		}
+		memcpy_s(m_ptr + loc, target - loc, in, len);
+		m_size = loc + len;
+		m_cap = target;
+	}
+
+	return len;
 }
