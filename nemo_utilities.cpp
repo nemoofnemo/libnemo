@@ -289,11 +289,11 @@ void nemo::EventDispatcher::debug_show(void)
 	std::cout << "--debug_show end--" << std::endl;
 }
 
-nemo::ByteArray::ByteArray()
+nemo::ByteArray::ByteArray() noexcept
 {
 }
 
-nemo::ByteArray::ByteArray(void* data, size_t size)
+nemo::ByteArray::ByteArray(const void* data, size_t size)
 {
 	if (!data)
 		throw std::invalid_argument("ByteArray: nullptr");
@@ -303,6 +303,9 @@ nemo::ByteArray::ByteArray(void* data, size_t size)
 	m_cap = (size % BYTE_ARRAY_ALIGN == 0)? 
 		size : (size / BYTE_ARRAY_ALIGN + 1) * BYTE_ARRAY_ALIGN;
 	m_ptr = (uint8_t*)malloc(m_cap);
+	if (!m_ptr)
+		throw;
+
 	m_size = size;
 	memcpy_s(m_ptr, m_cap, data, size);
 }
@@ -320,7 +323,7 @@ nemo::ByteArray::ByteArray(const ByteArray& arr)
 	memcpy_s(m_ptr, m_cap, arr.m_ptr, arr.m_size);
 }
 
-nemo::ByteArray::ByteArray(ByteArray&& arr)
+nemo::ByteArray::ByteArray(ByteArray&& arr) noexcept
 {
 	if (!arr.m_ptr)
 		return;
@@ -334,13 +337,13 @@ nemo::ByteArray::ByteArray(ByteArray&& arr)
 	arr.m_size = 0;
 }
 
-nemo::ByteArray::~ByteArray()
+nemo::ByteArray::~ByteArray() noexcept
 {
 	if (m_ptr)
 		free(m_ptr);
 }
 
-nemo::ByteArray& nemo::ByteArray::operator+(const ByteArray& right)
+nemo::ByteArray& nemo::ByteArray::operator+=(const ByteArray& right)
 {
 	if (!right.m_ptr)
 		return *this;
@@ -401,13 +404,54 @@ uint8_t& nemo::ByteArray::operator[](const size_t index)
 	return *(m_ptr + index);
 }
 
+nemo::ByteArray& nemo::ByteArray::operator=(ByteArray&& right) noexcept
+{
+	m_ptr = right.m_ptr;
+	m_cap = right.m_cap;
+	m_size = right.m_size;
+	right.m_ptr = nullptr;
+	right.m_cap = 0;
+	right.m_size = 0;
+	return *this;
+}
+
+nemo::ByteArray nemo::operator+(const ByteArray& left, const ByteArray& right)
+{
+	if (left.m_cap + right.m_cap < left.m_cap)
+		throw std::out_of_range("nemo::operator+");
+
+	uint8_t* tmp_ptr = (uint8_t*)malloc(left.m_cap + right.m_cap);
+	if (!tmp_ptr)
+		throw;
+
+	nemo::ByteArray arr;
+	arr.m_ptr = tmp_ptr;
+	arr.m_size = left.m_size + right.m_size;
+	arr.m_cap = left.m_cap + right.m_cap;
+
+	return arr;
+}
+
+size_t nemo::ByteArray::read_all(void* out, size_t buf_size)
+{
+	return nemo::ByteArray::read(out, buf_size, 0, m_size);
+}
+
+size_t nemo::ByteArray::read_all(ByteArray* arr)
+{
+	if (!arr)
+		throw std::invalid_argument("nemo::ByteArray::read_all: nullptr");
+
+	return nemo::ByteArray::read(arr, 0, m_size);
+}
+
 size_t nemo::ByteArray::read(void* out, size_t buf_size, size_t start, size_t end)
 {
 	if(!out)
 		throw std::invalid_argument("nemo::ByteArray::read: nullptr");
 	if(end < start)
 		throw std::invalid_argument("nemo::ByteArray::read");
-	if (start > m_size || end > m_size)
+	if (start >= m_size || end > m_size)
 		throw std::out_of_range("nemo::ByteArray::read");
 	if (buf_size == 0 || start == end)
 		return 0;
@@ -422,7 +466,37 @@ size_t nemo::ByteArray::read(void* out, size_t buf_size, size_t start, size_t en
 	}
 }
 
-size_t nemo::ByteArray::write(void* in, size_t loc, size_t len)
+size_t nemo::ByteArray::read(ByteArray* arr, size_t start, size_t end)
+{
+	if (!arr)
+		throw std::invalid_argument("nemo::ByteArray::read: nullptr");
+	if (start > end)
+		throw std::invalid_argument("nemo::ByteArray::read");
+	if(start >= m_size || end > m_size)
+		throw std::invalid_argument("nemo::ByteArray::read");
+	if (start == end)
+		return 0;
+
+	if (arr->m_ptr)
+		free(arr->m_ptr);
+
+	if (m_ptr) {
+		arr->m_size = end - start;
+		arr->m_cap = (arr->m_size % BYTE_ARRAY_ALIGN == 0) ?
+			arr->m_size : (arr->m_size / BYTE_ARRAY_ALIGN + 1) * BYTE_ARRAY_ALIGN;
+		arr->m_ptr = (uint8_t*)malloc(arr->m_cap);
+		memcpy_s(arr->m_ptr, arr->m_cap, m_ptr + start, arr->m_size);
+		return arr->m_size;
+	}
+	else {
+		arr->m_ptr = nullptr;
+		arr->m_size = 0;
+		arr->m_cap = 0;
+		return 0;
+	}
+}
+
+size_t nemo::ByteArray::write(const void* in, size_t loc, size_t len)
 {
 	if (!in)
 		throw std::invalid_argument("nemo::ByteArray::write: nullptr");
@@ -450,4 +524,99 @@ size_t nemo::ByteArray::write(void* in, size_t loc, size_t len)
 	}
 
 	return len;
+}
+
+size_t nemo::ByteArray::write(const ByteArray* arr, size_t loc, size_t len)
+{
+	if (!arr)
+		throw std::invalid_argument("nemo::ByteArray::read: nullptr");
+	if (loc > m_size)
+		throw std::invalid_argument("nemo::ByteArray::write");
+	if (len == 0)
+		return 0;
+
+	size_t len2 = (len >= arr->m_size) ?
+		arr->m_size : len;
+
+	if (loc + len2 <= m_cap) {
+		memcpy_s(m_ptr + loc, m_cap - loc, arr->m_ptr, len2);
+		if (loc + len2 > m_size)
+			m_size = loc + len2;
+	}
+	else {
+		uint8_t* tmp = m_ptr;
+		size_t target = ((loc + len2) % nemo::BYTE_ARRAY_ALIGN == 0) ?
+			loc + len2 : ((loc + len2) / nemo::BYTE_ARRAY_ALIGN + 1) * nemo::BYTE_ARRAY_ALIGN;
+		if ((m_ptr = (uint8_t*)realloc(m_ptr, target)) == nullptr) {
+			free(tmp);
+			throw;
+		}
+		memcpy_s(m_ptr + loc, target - loc, arr->m_ptr, len2);
+		m_size = loc + len2;
+		m_cap = target;
+	}
+
+	return len2;
+}
+
+size_t nemo::ByteArray::append(const void* in, size_t len)
+{
+	return nemo::ByteArray::write(in, m_size, len);
+}
+
+size_t nemo::ByteArray::append(const ByteArray* arr, size_t len)
+{
+	return nemo::ByteArray::write(arr, m_size, len);
+}
+
+size_t nemo::ByteArray::split(size_t start, size_t end)
+{
+	if (start > end)
+		throw std::invalid_argument("nemo::ByteArray::split");
+	if (start >= m_size || end > m_size)
+		throw std::invalid_argument("nemo::ByteArray::split");
+	if (start == end)
+		return 0;
+
+	size_t target = (end - start) % nemo::BYTE_ARRAY_ALIGN == 0 ?
+		end - start : ((end - start) / nemo::BYTE_ARRAY_ALIGN + 1) * nemo::BYTE_ARRAY_ALIGN;
+	auto tmp_ptr = malloc(target);
+	
+	if (!tmp_ptr)
+		throw;
+
+	memcpy_s(tmp_ptr, target, m_ptr + start, end - start);
+	free(m_ptr);
+	m_ptr = (uint8_t*)tmp_ptr;
+	m_size = end - start;
+	m_cap = target;
+
+	return m_size;
+}
+
+nemo::ByteArray nemo::ByteArray::split(const ByteArray* arr, size_t start, size_t end)
+{
+	if (!arr)
+		throw std::invalid_argument("nemo::ByteArray::split");
+	if(start > end)
+		throw std::invalid_argument("nemo::ByteArray::split");
+	if(start >= arr->m_size || end > arr->m_size)
+		throw std::invalid_argument("nemo::ByteArray::split");
+	if (start == end)
+		return nemo::ByteArray();
+
+	return nemo::ByteArray(arr->m_ptr + start, end - start);
+}
+
+void nemo::ByteArray::clear(void) noexcept{
+	if (m_ptr) {
+		m_cap = 0;
+		m_size = 0;
+		free(m_ptr);
+		m_ptr = nullptr;
+	}
+}
+
+size_t nemo::ByteArray::size(void) noexcept {
+	return m_size;
 }

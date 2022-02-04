@@ -12,6 +12,14 @@
 #include <cstring>
 
 #ifdef _MSC_VER
+#ifdef _DEBUG
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+#define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
+#define new DBG_NEW
+//call _CrtDumpMemoryLeaks() at exit of program.
+#endif // _DEBUG
 #include <Windows.h>
 #endif
 
@@ -35,29 +43,49 @@ namespace nemo {
 
 	public:
 		ByteArray() noexcept;
-		ByteArray(void* data, size_t size);
-		ByteArray(const ByteArray& arr) noexcept;
+		ByteArray(const void* data, size_t size);
+		ByteArray(const ByteArray& arr);
 		ByteArray(ByteArray&& arr) noexcept;
 		virtual ~ByteArray() noexcept;
 
-		ByteArray& operator+(const ByteArray& right);
+		ByteArray& operator+=(const ByteArray& right);
 		ByteArray& operator=(const ByteArray& right);
 		uint8_t& operator[](const size_t index);
-		ByteArray& operator=(ByteArray&& right) = delete;
+		ByteArray& operator=(ByteArray&& right) noexcept;
+		friend ByteArray operator+(const ByteArray& left, const ByteArray& right);
 
 		size_t read_all(void* out, size_t buf_size);
 		size_t read_all(ByteArray* arr);
 		size_t read(void* out,size_t buf_size, size_t start, size_t end);
 		size_t read(ByteArray* arr, size_t start, size_t end);
-		size_t write(void* in, size_t loc, size_t len);
-		void write(ByteArray* arr, size_t loc, size_t len);
-		void append(void* in, size_t len);
-		void append(ByteArray* arr, size_t len);
-		void clear(void);
+		size_t write(const void* in, size_t loc, size_t len);
+		size_t write(const ByteArray* arr, size_t loc, size_t len);
+		size_t append(const void* in, size_t len);
+		size_t append(const ByteArray* arr, size_t len);
+		size_t split(size_t start, size_t end);
+		static ByteArray split(const ByteArray* arr, size_t start, size_t end);
+		void clear(void) noexcept;
+		size_t size(void) noexcept;
+
+#ifdef _DEBUG
+		void debug_show(void) {
+			if (!m_ptr) {
+				std::cout << this << "--> empty." << std::endl;
+				return;
+			}
+			char* ptr = new char[m_size + 1];
+			memcpy_s(ptr, m_size + 1, m_ptr, m_size);
+			ptr[m_size] = '\0';
+			std::cout << this << "--> m_size:" << m_size <<", m_cap: " 
+				<< m_cap << ", content:\n\t" << ptr << std::endl;
+			delete[] ptr;
+		}
+#endif
 	};
 
-	class Task
-	{
+	nemo::ByteArray operator+(const ByteArray& left, const ByteArray& right);
+
+	class Task {
 	public:
 		virtual void run(void) = 0;
 	};
