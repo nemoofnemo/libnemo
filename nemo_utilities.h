@@ -30,7 +30,7 @@ namespace nemo {
 	void debug_log(const std::string& str);
 	void n_debug_log(const char* str, const char* file, int line);
 	
-	#define nDebug(str) n_debug_log(str, __FILE__, __LINE__)
+	#define nDebug(str) nemo::n_debug_log(str, __FILE__, __LINE__)
 
 	static constexpr size_t BYTE_ARRAY_ALIGN = sizeof(size_t);
 	static int nemp_random_key = 0;
