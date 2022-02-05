@@ -10,6 +10,8 @@
 #include <exception>
 #include <cstdarg>
 #include <cstring>
+#include <string>
+#include <sstream>
 
 #ifdef _MSC_VER
 #ifdef _DEBUG
@@ -21,11 +23,14 @@
 //call _CrtDumpMemoryLeaks() at exit of program.
 #endif // _DEBUG
 #include <Windows.h>
-#endif
+#endif // _MSC_VER
 
 namespace nemo {
 
 	void debug_log(const std::string& str);
+	void n_debug_log(const char* str, const char* file, int line);
+	
+	#define nDebug(str) n_debug_log(str, __FILE__, __LINE__)
 
 	static constexpr size_t BYTE_ARRAY_ALIGN = sizeof(size_t);
 	static int nemp_random_key = 0;
@@ -66,6 +71,7 @@ namespace nemo {
 		static ByteArray split(const ByteArray* arr, size_t start, size_t end);
 		void clear(void) noexcept;
 		size_t size(void) noexcept;
+		void* get(void) noexcept;
 
 #ifdef _DEBUG
 		void debug_show(void) {

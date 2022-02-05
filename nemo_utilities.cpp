@@ -1,24 +1,37 @@
 #include "nemo_utilities.h"
 
-#ifdef _MSC_VER
+
 void nemo::debug_log(const std::string& str) {
 #ifndef _DEBUG
 	return;
 #else
+#ifdef _MSC_VER
 	OutputDebugStringA(str.c_str());
 	OutputDebugStringA("\n");
 	std::cout << str << std::endl;
-#endif
-}
 #else
-void nemo::debug_log(const std::string& str) {
+	std::cerr << str << std::endl;
+#endif // _MSC_VER
+#endif // _DEBUG
+}
+
+void nemo::n_debug_log(const char* str, const char* file, int line)
+{
 #ifndef _DEBUG
 	return;
 #else
-	std::cerr << str << std::endl;
+	if (!str || !file || line < 0)
+		return;
+	std::stringstream ss;
+	ss << "Log at " << file << ", line " << line << ":" << std::endl;
+	ss << '\t' << str << std::endl;
+	auto out = ss.str();
+#ifdef _MSC_VER
+	OutputDebugStringA(out.c_str());
+#endif // _MSC_VER
+	std::cout << out;
 #endif
 }
-#endif // _MSC_VER
 
 nemo::ThreadPool::ThreadPool(size_t count, unsigned long time)
 {
