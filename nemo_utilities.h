@@ -71,21 +71,10 @@ namespace nemo {
 		static ByteArray split(const ByteArray* arr, size_t start, size_t end);
 		void clear(void) noexcept;
 		size_t size(void) noexcept;
-		void* get(void) noexcept;
+		const void* get(void) noexcept;
 
 #ifdef _DEBUG
-		void debug_show(void) {
-			if (!m_ptr) {
-				std::cout << this << "--> empty." << std::endl;
-				return;
-			}
-			char* ptr = new char[m_size + 1];
-			memcpy_s(ptr, m_size + 1, m_ptr, m_size);
-			ptr[m_size] = '\0';
-			std::cout << this << "--> m_size:" << m_size <<", m_cap: " 
-				<< m_cap << ", content:\n\t" << ptr << std::endl;
-			delete[] ptr;
-		}
+		void debug_show(void);
 #endif
 	};
 

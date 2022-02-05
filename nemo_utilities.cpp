@@ -633,3 +633,24 @@ void nemo::ByteArray::clear(void) noexcept{
 size_t nemo::ByteArray::size(void) noexcept {
 	return m_size;
 }
+
+const void* nemo::ByteArray::get(void) noexcept
+{
+	return (void*)m_ptr;
+}
+
+#ifdef _DEBUG
+void nemo::ByteArray::debug_show(void)
+{
+	if (!m_ptr) {
+		std::cout << this << "--> empty." << std::endl;
+		return;
+	}
+	char* ptr = new char[m_size + 1];
+	memcpy_s(ptr, m_size + 1, m_ptr, m_size);
+	ptr[m_size] = '\0';
+	std::cout << this << "--> m_size:" << m_size << ", m_cap: "
+		<< m_cap << ", content:\n\t" << ptr << std::endl;
+	delete[] ptr;
+}
+#endif // _DEBUG
