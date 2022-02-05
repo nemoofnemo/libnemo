@@ -29,7 +29,7 @@ void nemo::n_debug_log(const char* str, const char* file, int line)
 #ifdef _MSC_VER
 	OutputDebugStringA(out.c_str());
 #endif // _MSC_VER
-	std::cout << out;
+	std::cerr << out;
 #endif
 }
 
