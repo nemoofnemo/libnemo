@@ -634,9 +634,33 @@ size_t nemo::ByteArray::size(void) noexcept {
 	return m_size;
 }
 
-const void* nemo::ByteArray::get(void) noexcept
+void* nemo::ByteArray::get(void) noexcept
 {
 	return (void*)m_ptr;
+}
+
+void nemo::ByteArray::alloc(size_t len)
+{
+	if (len == 0) {
+		this->clear();
+		return;
+	}
+		
+	auto target = (len % nemo::BYTE_ARRAY_ALIGN == 0) ?
+		len : (len / nemo::BYTE_ARRAY_ALIGN + 1) * nemo::BYTE_ARRAY_ALIGN;
+	auto ptr = realloc(m_ptr, target);
+
+	if (!ptr)
+		throw;
+	if (m_ptr) {
+		if (m_size > target)
+			m_size = target;
+	}
+	else {
+		m_size = 0;
+	}
+	m_ptr = (uint8_t*)ptr;
+	m_cap = target;
 }
 
 #ifdef _DEBUG

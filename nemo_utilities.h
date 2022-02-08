@@ -71,7 +71,8 @@ namespace nemo {
 		static ByteArray split(const ByteArray* arr, size_t start, size_t end);
 		void clear(void) noexcept;
 		size_t size(void) noexcept;
-		const void* get(void) noexcept;
+		void* get(void) noexcept;
+		void alloc(size_t len);
 
 #ifdef _DEBUG
 		void debug_show(void);
